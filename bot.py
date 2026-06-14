@@ -77,7 +77,8 @@ def ping():
     return "pong", 200
 
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=8080)
+    port = int(os.getenv("PORT", 8080))
+    flask_app.run(host="0.0.0.0", port=port)
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -234,12 +235,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 
 def main():
-    # Start Flask ping server in background thread
+    # Start Flask ping server in background thread FIRST
     t = threading.Thread(target=run_flask, daemon=True)
     t.start()
     logger.info("Ping server running on port 8080")
 
-    # Start Telegram bot
+    # Build and run the bot in main thread (owns the event loop)
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
@@ -248,7 +249,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot is running...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
